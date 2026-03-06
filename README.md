@@ -230,6 +230,38 @@ You should see: `apollo`, `gong`, `commonroom`, `exa`, `leadfeeder`
 
 ---
 
+### 6. Export your account list from Salesforce
+
+Once everything above is set up, pull the list of accounts you want to research:
+
+1. In Salesforce, go to **Reports → New Report → Accounts**
+2. Add at minimum: **Account Name** and **Website**
+3. Filter to your territory or book of business
+4. Click **Export → CSV**
+5. Rename the columns in the file to `company_name` and `domain`, then save it to:
+
+```
+~/claude-work/research-assistant/inputs/accounts.csv
+```
+
+---
+
+### 7. Run research
+
+Open Claude Code and run:
+
+```
+# Single account
+account-research "Acme Corp, acme.com"
+
+# Full batch (all accounts in your CSV)
+account-research "batch: ~/claude-work/research-assistant/inputs/accounts.csv"
+```
+
+Reports are saved to `~/claude-work/research-assistant/outputs/accounts/<company>/report.md` and written back to the `Account_Research` field in Apollo automatically.
+
+---
+
 ## Data Sources
 
 | Source | What it provides |
