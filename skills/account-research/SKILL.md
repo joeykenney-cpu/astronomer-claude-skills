@@ -180,7 +180,7 @@ Keep only: `lead_id`, `name`, `website`, `visit_count`, `last_visited_at`, and p
 ```bash
 python3 -u ~/claude-work/gong_account_transcripts.py "COMPANY_NAME" --stdout
 ```
-Try name variations if no match. Extract: call dates, participants, topics, pain points, tech stack mentions, deal stage, follow-up items.
+Try name variations if no match. The script automatically fetches email history alongside transcripts (gracefully skipped if Gong email integration is not configured). Extract from both calls and emails: call dates, participants, topics, pain points, tech stack mentions, deal stage, follow-up items, and any email thread context (subject lines, email direction, key content).
 
 ### Step 4: Assemble RAW INTELLIGENCE Block
 
@@ -263,6 +263,10 @@ Try name variations if no match. Extract: call dates, participants, topics, pain
 
 ### Tech Stack from Calls
 [tools mentioned, tagged with call date]
+
+### Email History
+[Found / Not Found — if not available: "Email integration not configured in this workspace."]
+[If found: list emails with date, direction (inbound/outbound), subject, and key content excerpt]
 
 ### Full Transcripts
 [full transcript text]
@@ -398,7 +402,8 @@ Display: total processed, grade distribution, top 10 by score, biggest score inc
 | **Exa AI** | Fall back to Claude's built-in web search. Same queries, equivalent coverage. No confidence penalty. |
 | **Common Room** | Key Contacts section: "No Common Room data found." Contact intelligence from Gong/web only. |
 | **Leadfeeder** | Buying Signals caps at 1. Note "No website visit data" in Website Engagement section. |
-| **Gong** | Prior Conversations: "No prior Gong calls found. Cold outreach." |
+| **Gong calls** | Prior Conversations: "No prior Gong calls found. Cold outreach." |
+| **Gong emails** | Email History: "Email integration not configured in this workspace." Calls still used normally. |
 | **Apollo** | Skip write-back. Report saves locally. Note "Apollo sync skipped." |
 | **Nothing connected** | Run all research via Claude's built-in web search. Report generates with fit score, tech stack, hiring signals, and outreach brief. Confidence: MEDIUM or LOW. |
 
