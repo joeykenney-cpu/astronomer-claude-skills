@@ -149,8 +149,11 @@ Response structure per call:
 
 Use the speaker ID → name map built in Step 3 (do not re-fetch). Calculate precise talk ratios from transcript sentence timestamps to refine the estimates from Step 3.
 
-**Deep link format**: `{call.url}&t={sentence.start / 1000}`
-Example: `https://us-35700.app.gong.io/call?id=123456&t=45` links to the 45-second mark.
+**Deep link format**: `{call.url}&highlights=%5B%7B%22type%22%3A%22SHARE%22%2C%22from%22%3A{start_sec}%2C%22to%22%3A{end_sec}%7D%5D`
+
+Where `start_sec = sentence.start // 1000` and `end_sec = sentence.end // 1000`.
+
+Example: `https://us-35700.app.gong.io/call?id=123456&highlights=%5B%7B%22type%22%3A%22SHARE%22%2C%22from%22%3A45%2C%22to%22%3A48%7D%5D` links to the 45–48 second mark.
 
 ---
 
