@@ -10,6 +10,7 @@ Answer questions about an account using internal data: Gong call transcripts and
 ## Architecture
 
 - **Gong transcripts**: Two-tier cache at `~/claude-work/gong-cache/` (global call index + per-account transcripts)
+- **Gong emails**: Fetched automatically alongside transcripts. Cached per-account. Gracefully skipped if Gong email integration is not configured in the workspace.
 - **Account files**: `~/claude-work/research-assistant/outputs/accounts/<account_name>/` (report.md, interactions.md)
 
 ## Input
@@ -35,24 +36,26 @@ Read whatever exists. This gives you the full history so you don't repeat prior 
 Run the script to pull all calls and transcripts for the account:
 
 ```bash
-python3 -u ~/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --stdout
+python3 -u /Users/joeykenney/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --stdout
 ```
 
 The script automatically checks the global call index cache and does an incremental update if needed.
 
 If unsure of the exact account name, list available accounts:
 ```bash
-python3 ~/claude-work/gong_account_transcripts.py --list-accounts
+python3 /Users/joeykenney/claude-work/gong_account_transcripts.py --list-accounts
 ```
 
 For very large accounts, narrow the time window:
 ```bash
-python3 -u ~/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --months 3 --stdout
+python3 -u /Users/joeykenney/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --months 3 --stdout
 ```
 
 ### 2. Answer the Question
 
-Use all available context — saved account files and Gong transcripts — to answer whatever the user asked.
+Use all available context — saved account files, Gong transcripts, and Gong email history — to answer whatever the user asked.
+
+**Email history** appears in the script output under `## Email History`. If emails were captured, include relevant email threads (subject lines, direction, key content) when summarizing the account relationship. If emails are unavailable (integration not configured), note it briefly and move on.
 
 If no specific question was asked, provide a brief overview:
 - What recent calls covered
@@ -75,7 +78,8 @@ The user will likely ask follow-up questions. The data is already in context, so
 
 ## Notes
 - Global Gong call index is synced daily via cron (6 AM) and incrementally on each query
-- Per-account transcripts are cached separately and updated when new calls appear
+- Per-account transcripts and emails are cached separately and updated when new calls appear
+- Email history appears under `## Email History` in script output; gracefully skipped if Gong email integration is not active
 - Use `--no-cache` to bypass all Gong caches if you need completely fresh data
 - Use `--refresh-cache` to force a full rebuild of the global call index
 - Use `--sync` to just update the global index without querying an account
