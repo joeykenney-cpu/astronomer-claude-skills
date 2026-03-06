@@ -34,20 +34,18 @@ Run all five source collections in parallel using the Agent tool with subagent_t
 
 #### Agent 1: Web Research (Exa AI preferred, built-in web search as fallback)
 
-**If the `mcp__exa__*` tools are available**, run these 7 Exa calls (parallel where possible). **If Exa is not connected**, perform the same searches using Claude's built-in web search — the queries and goals are identical, just use the WebSearch tool instead.
+**If the `mcp__exa__*` tools are available**, run these 9 Exa calls (parallel where possible). **If Exa is not connected**, perform the same searches using Claude's built-in web search — the queries and goals are identical, just use the WebSearch tool instead of the Exa MCP tools.
 
-Run all 7 searches in parallel, then follow up with job posting crawls.
-
-1. **Company Overview**:
+1. **Company Research**:
    ```
    mcp__exa__company_research_exa(companyName=COMPANY_NAME)
    ```
 
-2. **Tech Stack, Engineering & Orchestration** (merged):
+2. **Orchestration/Pipeline Evidence**:
    ```
    mcp__exa__web_search_advanced_exa(
-     query="{COMPANY_NAME} data pipeline orchestration airflow dagster prefect engineering blog infrastructure",
-     startPublishedDate=[18 months ago, YYYY-MM-DD],
+     query="{COMPANY_NAME} data pipeline orchestration airflow dagster prefect",
+     startPublishedDate=[12 months ago, YYYY-MM-DD],
      numResults=5
    )
    ```
@@ -62,46 +60,57 @@ Run all 7 searches in parallel, then follow up with job posting crawls.
    )
    ```
 
-4. **News & Announcements** (merged):
+4. **Recent News**:
    ```
    mcp__exa__web_search_exa(
-     query="{COMPANY_NAME} news funding product launch announcement 2025 2026",
+     query="{COMPANY_NAME} corporate strategy news 2025 2026",
      numResults=5
    )
    ```
 
 5. **Website Crawl**:
    ```
-   mcp__exa__crawling_exa(url="https://{DOMAIN}", maxCharacters=3000)
+   mcp__exa__crawling_exa(url="https://{DOMAIN}", maxCharacters=5000)
    ```
 
-6. **Case Studies & Vendor Mentions**:
+6. **Engineering & Data Blog Posts**:
    ```
    mcp__exa__web_search_advanced_exa(
-     query="{COMPANY_NAME} Snowflake OR Databricks OR dbt OR AWS OR Google Cloud OR Azure case study OR customer OR partner OR blog",
+     query="{COMPANY_NAME} engineering blog data infrastructure pipeline platform",
+     startPublishedDate=[18 months ago, YYYY-MM-DD],
      numResults=5
    )
    ```
 
-7. **Job Description Details** (crawl top 1-2 relevant postings from search 3):
+7. **Product Announcements**:
+   ```
+   mcp__exa__web_search_advanced_exa(
+     query="{COMPANY_NAME} product launch announcement new feature release",
+     startPublishedDate=[12 months ago, YYYY-MM-DD],
+     numResults=5
+   )
+   ```
+
+8. **Case Studies & Third-Party Mentions**:
+   ```
+   mcp__exa__web_search_advanced_exa(
+     query="{COMPANY_NAME} case study customer story",
+     numResults=5
+   )
+   ```
+   Also search for vendor-specific case studies that may reveal stack details:
+   ```
+   mcp__exa__web_search_advanced_exa(
+     query="{COMPANY_NAME} Snowflake OR Databricks OR dbt OR AWS OR Google Cloud OR Azure case study OR customer OR partner",
+     numResults=5
+   )
+   ```
+
+9. **Job Description Details** (for top 1-2 relevant postings found in search 3):
    ```
    mcp__exa__crawling_exa(url="[JOB_POSTING_URL]", maxCharacters=5000)
    ```
-   Crawl the most relevant data engineering / platform engineering job posting URLs. Extract specific requirements, responsibilities, and tech stack mentions in full — this is high-value data. If no relevant postings found, skip.
-
-**Output format for this agent**: Return a compact structured summary for searches 1–6. For each search, provide bullet points of key findings with source URLs — do NOT return full article text or raw API response bodies. Example:
-```
-## Tech Stack & Engineering
-- Confirmed Airflow usage in Jan 2025 engineering blog post [url]
-- Snowflake + dbt mentioned in case study with Fivetran [url]
-- No Dagster/Prefect mentions found
-
-## Hiring Signals
-- Active DE posting (Mar 2025): requires Airflow, Snowflake, dbt [url]
-- Platform Engineer posting: K8s, Terraform, cloud-agnostic [url]
-```
-
-For search 7 (job posting crawls), return the **full crawled text** — do not summarize.
+   Crawl the most relevant data engineering / platform engineering job posting URLs found in the hiring signals search. Extract specific requirements, responsibilities, and tech stack mentions. If no relevant postings found, skip this step.
 
 #### Agent 2: Leadfeeder Lookup
 
@@ -264,28 +273,34 @@ Combine all agent results into a structured block. **Keep it compact** — bulle
 # Collected: {TODAY_DATE}
 ---
 
-## SOURCE: WEB RESEARCH
+## SOURCE: EXA AI
 
-### Company Overview
-[2-3 sentence summary of what the company does, size, industry, business model]
+### Company Research
+[Insert company_research_exa results]
 
-### Tech Stack & Engineering Signals
-[Bullet points: confirmed tools/platforms with source URLs. e.g. "- Airflow confirmed in Mar 2025 engineering blog [url]"]
+### Orchestration & Pipeline Evidence
+[Insert web_search_advanced results for orchestration query]
 
 ### Hiring Signals
-[Bullet points: relevant open roles with key tech requirements and source URLs]
+[Insert web_search_advanced results for hiring query]
 
-### News & Announcements
-[Bullet points: funding, acquisitions, product launches, headcount changes with dates and URLs]
+### Recent News
+[Insert web_search results for news query]
 
-### Website Content Summary
-[2-3 sentences: what the homepage/main pages reveal about their data/platform maturity]
+### Website Content
+[Insert crawling_exa results]
 
-### Case Studies & Vendor Mentions
-[Bullet points: any vendor partnerships, case studies, or third-party stack mentions with URLs]
+### Engineering & Data Blog Posts
+[Insert results — titles, URLs, key excerpts about their data stack, infrastructure decisions, or technical challenges]
 
-### Job Description Details (full text)
-[Full crawled text of top 1-2 relevant data/platform engineering job postings. Preserve verbatim — do not summarize.]
+### Product Announcements
+[Insert results — recent product launches, features, or platform changes that may imply new data pipeline needs]
+
+### Case Studies & Third-Party Mentions
+[Insert results — any case studies by vendors (Snowflake, dbt, Databricks, etc.) featuring the company, or blog posts from other companies referencing their stack. These often contain detailed tech stack and architecture info.]
+
+### Job Description Details
+[Insert crawled job posting text for relevant data/platform roles — specific requirements, responsibilities, tools mentioned. If no postings crawled, note "No relevant job postings crawled."]
 
 ---
 
