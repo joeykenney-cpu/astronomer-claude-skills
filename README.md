@@ -45,14 +45,55 @@ account-question "Figure — what did we discuss in the last call?"
 
 ---
 
+### `weekly-gong-review`
+Generates a weekly call coaching report for an AE. Pulls every call they appeared on (not just calls they hosted), scores performance across 6 dimensions, surfaces coachable moments with deep links to the exact timestamp in each recording, and tracks week-over-week trends.
+
+**Triggers**: `/weekly-gong-review`
+
+**What it produces**:
+- **Scorecard** — 6 dimensions scored 1–5 with trend vs. prior week: Discovery Depth · Next Step Quality · Talk Ratio · Technical Confidence · Competitive Handling · Multi-threading
+- **One Thing to Focus On** — single highest-leverage behavioral change for the week, with a specific call example
+- **This Week's Highlight** — exact quote from a strong moment, linked to the timestamp
+- **Cross-Call Patterns** — themes seen in 2+ calls (highest coaching signal)
+- **Call-by-Call** — what worked, what to work on, and a "Try instead" reframe — all with exact quotes and deep links
+- **Score History** — rolling 4-week trend table
+
+**Usage**:
+```
+# Review the current week
+/weekly-gong-review
+
+# Review a specific week
+/weekly-gong-review week:2026-W09
+
+# Review a different rep
+/weekly-gong-review rep:"Alec Dolton"
+/weekly-gong-review rep:alec.dolton@astronomer.io
+```
+
+**Requirements**:
+- Gong API credentials (`$GONG_ACCESS_KEY` and `$GONG_SECRET_KEY` — see setup below)
+- No MCP connections needed — uses the Gong REST API directly
+
+**Install**:
+```bash
+mkdir -p ~/.claude/skills/weekly-gong-review
+cp skills/weekly-gong-review/SKILL.md ~/.claude/skills/weekly-gong-review/SKILL.md
+```
+
+On first run, Claude will prompt for the rep's Astronomer email address, look up their Gong user ID, and cache it — subsequent runs skip this step entirely.
+
+---
+
 ## Setup
 
 ### 1. Install the skills
 
 ```bash
-mkdir -p ~/.claude/skills/account-research ~/.claude/skills/account-question
+mkdir -p ~/.claude/skills/account-research ~/.claude/skills/account-question ~/.claude/skills/weekly-gong-review
 cp skills/account-research/SKILL.md ~/.claude/skills/account-research/SKILL.md
 cp skills/account-question/SKILL.md ~/.claude/skills/account-question/SKILL.md
+cp skills/weekly-gong-review/SKILL.md ~/.claude/skills/weekly-gong-review/SKILL.md
 ```
 
 Restart Claude Code — the skills will appear automatically.
@@ -117,10 +158,10 @@ Set your Gong API credentials as environment variables (add to `~/.zshrc` or `~/
 
 ```bash
 export GONG_ACCESS_KEY=your_gong_access_key
-export GONG_ACCESS_KEY_SECRET=your_gong_secret
+export GONG_SECRET_KEY=your_gong_secret_key
 ```
 
-Get these from Gong → Settings → API → Access Keys.
+Get these from Gong → Settings → API → Access Keys. These credentials are used by both the transcript script and the `weekly-gong-review` skill.
 
 ### 4. Connect MCP servers (all optional)
 

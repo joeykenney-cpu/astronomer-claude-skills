@@ -17,6 +17,15 @@ The user has provided: {{args}}
 - **Scores file**: `~/claude-work/rep-coaching/scores.csv`
 - **Config file**: `~/claude-work/rep-coaching/config.md`
 
+## API Approach
+
+**Always use the Gong REST API directly via Bash** for all data fetching (calls, transcripts, users). Do NOT use the `mcp__gong__*` tools for data retrieval — the MCP tools have significant limitations:
+- `search_calls` only returns calls the rep hosted (misses calls they attended)
+- `list_users` pagination is slower than the REST API
+- MCP tools cannot do batch transcript fetches
+
+The only exception: you may use `mcp__gong__get_call_summary` as a fallback if a transcript is unavailable for a specific call.
+
 ---
 
 ## Step 1: Parse Input & Determine Date Range
@@ -29,7 +38,7 @@ python3 -c "
 import datetime, sys
 week_str = '{{WEEK}}'  # e.g. '2026-W10'
 year, week = int(week_str[:4]), int(week_str[6:])
-monday = datetime.datetime.strptime(f'{year}-W{week:02d}-1', '%G-W%W-%u')
+monday = datetime.datetime.strptime(f'{year}-W{week:02d}-1', '%G-W%V-%u')
 sunday = monday + datetime.timedelta(days=6, hours=23, minutes=59, seconds=59)
 print(monday.strftime('%Y-%m-%dT00:00:00Z'))
 print(sunday.strftime('%Y-%m-%dT23:59:59Z'))
@@ -44,6 +53,7 @@ print(sunday.strftime('%Y-%m-%dT23:59:59Z'))
 Read `~/claude-work/rep-coaching/config.md`. Expected format:
 ```
 Email: jake.thomer@astronomer.io
+UserId: 8095169465302401061
 ```
 
 If file does not exist:
@@ -55,10 +65,14 @@ If a `rep:` argument was provided, use that instead of config (supports both nam
 
 ### 2b. Resolve Gong user ID from email
 
-Use the MCP `list_users` tool and paginate until a match is found:
+**Check config first**: If `UserId` is present in config.md and no `rep:` override was given, use it directly — skip the REST API lookup entirely.
 
-```
-mcp__gong__list_users()  # repeat with cursor until match found
+If `UserId` is missing (first run, or `rep:` override), paginate the REST API to find the user:
+
+```bash
+AUTH=$(echo -n "$GONG_ACCESS_KEY:$GONG_SECRET_KEY" | base64)
+curl -s "https://api.gong.io/v2/users?limit=100" -H "Authorization: Basic $AUTH"
+# repeat with ?cursor=... until match found
 ```
 
 Match priority:
@@ -66,53 +80,44 @@ Match priority:
 2. If no exact match: infer name from email (`jake.thomer` → "Jake Thomer"), fuzzy-match against user display names
 3. If still no match: tell the user "Could not find [email] in Gong. Please check that this matches your Gong account email." and stop.
 
+**After finding the ID**: Write `UserId: {ID}` to config.md so future runs skip this lookup.
+
 Store: `REP_NAME`, `REP_USER_ID`, `REP_EMAIL`.
 
 ---
 
 ## Step 3: Fetch All Calls for the Week (REST API)
 
-Paginate through ALL calls in the date range using the REST API. Do NOT use `search_calls` MCP — it only returns calls the rep hosted. We need every call they appeared on.
+Paginate through ALL calls in the date range using `/v2/calls/extensive` with `parties: true` — this returns participant data needed for filtering in the same request. Do NOT use `search_calls` MCP (host-only) or the basic `/v2/calls` endpoint (no participant data).
 
 ```bash
 AUTH=$(echo -n "$GONG_ACCESS_KEY:$GONG_SECRET_KEY" | base64)
-curl -s "https://api.gong.io/v2/calls?fromDateTime={FROM}&toDateTime={TO}&limit=100" \
-  -H "Authorization: Basic $AUTH"
+curl -s -X POST "https://api.gong.io/v2/calls/extensive" \
+  -H "Authorization: Basic $AUTH" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filter": {"fromDateTime": "{FROM}", "toDateTime": "{TO}"},
+    "contentSelector": {"exposedFields": {"parties": true}},
+    "cursor": "{CURSOR_IF_PAGINATING}"
+  }'
 ```
 
-Paginate using `records.cursor` until all pages are fetched. For this workspace expect ~200-300 calls/week (~3 pages).
+Paginate using `records.cursor` until all pages are fetched (~3 pages for this workspace).
 
-Filter the results to calls where `REP_USER_ID` appears in the `participants` array (check `userId` field on each participant).
+**Initial filter** (cheap, no transcript needed):
+- Keep only calls where `REP_USER_ID` appears in `parties[].userId`
+- Drop calls with `metaData.duration < 900` (< 15 minutes)
+- Drop calls where every party email ends in `@astronomer.io` (internal-only)
 
-### 3a. Drop noise calls
+Store the candidate call list: `[{id, title, url, date, duration_seconds, parties}]`
 
-Exclude calls that won't produce useful coaching signal:
-- Duration < 15 minutes
-- All participants share `@astronomer.io` email domain (internal-only call)
-- Rep's total speaking time < 10% of call duration (they were an observer)
-
-To check speaking time without fetching full transcripts: use `get_call_summary` — it often includes talk ratio. If not available at this stage, keep the call and check after transcript fetch.
-
-Store the filtered call list: `[{id, title, url, date, duration_seconds, account_name}]`
-
-If 0 calls remain after filtering: output "No external calls found for {REP_NAME} in {WEEK}." and stop.
+**Also kick off in parallel**: Read `~/claude-work/rep-coaching/scores.csv` (Step 6) while call pagination is running — no dependency between them.
 
 ---
 
-## Step 4: Fetch Call Summaries
+## Step 4: Fetch Transcripts & Final Filter (REST API)
 
-For each filtered call, fetch the summary via MCP:
-```
-mcp__gong__get_call_summary(callId="{CALL_ID}")
-```
-
-Run sequentially. Extract: key topics, participants (names + companies), talk ratio if present, call outcome.
-
----
-
-## Step 5: Fetch Timestamped Transcripts (REST API)
-
-Fetch full transcripts with sentence-level timestamps for all filtered calls in a single batch request:
+Fetch transcripts for all candidate calls in a **single batch request**:
 
 ```bash
 AUTH=$(echo -n "$GONG_ACCESS_KEY:$GONG_SECRET_KEY" | base64)
@@ -137,17 +142,22 @@ Response structure per call:
 }
 ```
 
-Build a speaker ID → name map from the participants data fetched in Step 3.
+Build a speaker ID → name map from the `parties` data fetched in Step 3.
 
-**Deep link format**: `{call.url}?t={sentence.start / 1000}`
-Example: `https://app.gong.io/call?id=123456&t=45` links to the 45-second mark.
+**Talk ratio filter**: Sum `(end - start)` ms per speaker from transcript sentences. Drop calls where rep's share < 10% of total speaking time (they were an observer). Flag calls where rep talked > 60%.
 
-### 5a. Calculate talk ratio per call
-Sum `(end - start)` ms for each speaker. Rep's talk ratio = rep_ms / total_ms. Flag calls where rep talked > 60% — meaningful signal.
+**Deep link format**: `{call.url}&t={sentence.start / 1000}`
+Example: `https://us-35700.app.gong.io/call?id=123456&t=45` links to the 45-second mark.
+
+Store the final qualifying call list with full transcripts and talk ratios.
+
+If 0 calls remain: output "No external calls found for {REP_NAME} in {WEEK}." and stop.
 
 ---
 
 ## Step 6: Load Historical Scores
+
+*(Run in parallel with Step 3 call pagination — no dependency)*
 
 Read `~/claude-work/rep-coaching/scores.csv` if it exists:
 ```csv
@@ -161,7 +171,7 @@ Load the last 4 weeks of scores for trend context. If no history exists, note "F
 
 ## Step 7: Analyze & Generate Report
 
-Using all call summaries, transcripts, talk ratios, and historical scores — generate the full coaching report in a single pass.
+Using all transcripts, talk ratios, participant data, and historical scores — generate the full coaching report in a single pass.
 
 ### Scoring Rubric (1–5 per dimension)
 
@@ -246,8 +256,6 @@ Score each dimension based on evidence across ALL calls this week. Cite the stro
 | **Overall** | **{X}/5** | **{X}/5** | up/down/flat |
 
 > Confidence: {HIGH if 4+ calls / MEDIUM if 2-3 / LOW if 1}
-
----
 
 ## One Thing to Focus on This Week
 
@@ -336,7 +344,7 @@ Output the full report. No preamble — start directly with the report content.
 | Config missing | Prompt for email, create config, proceed |
 | Email not found in Gong | Try name inference from email; if still not found, tell user to check their Gong account email |
 | 0 qualifying calls | "No external calls found for {REP_NAME} in {WEEK}." |
-| Transcript fetch fails for a call | Note "Transcript unavailable" for that call; still include summary-based observations |
+| Transcript fetch fails for a call | Note "Transcript unavailable" for that call; score based on parties/metadata only |
 | No history in scores.csv | Skip trend column; note "First week tracked" |
 | Competitor not mentioned | Score competitive as N/A, exclude from overall average |
 | Talk ratio unavailable | Calculate from transcript timestamps; if transcript also unavailable, omit dimension for that call |
