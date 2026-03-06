@@ -8,7 +8,7 @@ Two-tier cache architecture:
 2. Per-account transcripts: Fetched on-demand for matched calls, cached per account.
 
 Usage:
-    python gong_account_transcripts.py "Third Point" --stdout
+    python gong_account_transcripts.py "Acme Corp" --stdout
     python gong_account_transcripts.py "Pretto" --months 6 --stdout
     python gong_account_transcripts.py "" --list-accounts
     python gong_account_transcripts.py --sync              # Incremental update only
@@ -200,7 +200,7 @@ def save_global_index(cache_dir: Path, calls: list, from_date: str, to_date: str
     print(f"  Saved global index: {len(calls)} calls.")
 
 
-GITHUB_REPO = "joeykenney-cpu/Gong-transcript-search-skill"
+GITHUB_REPO = "joeykenney-cpu/astronomer-claude-skills"
 GITHUB_RELEASE_TAG = "v1.0.0"
 
 

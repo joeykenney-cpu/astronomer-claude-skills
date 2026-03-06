@@ -33,8 +33,8 @@ Run before spawning agents:
 **a) Gong index pre-check**:
 ```bash
 python3 -c "
-import json, sys
-with open('/Users/joeykenney/claude-work/gong-cache/all_calls/calls.json') as f:
+import json, os, sys
+with open(os.path.expanduser('~/claude-work/gong-cache/all_calls/calls.json')) as f:
     calls = json.load(f)
 matches = [c for c in calls if 'COMPANY_NAME'.lower() in (c.get('crm_account_name') or '').lower()]
 print(f'GONG_MATCH: {len(matches)} calls found')

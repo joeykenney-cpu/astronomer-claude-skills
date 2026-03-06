@@ -28,12 +28,12 @@ account-research "batch: ~/claude-work/research-assistant/inputs/accounts.csv"
 ### `account-question`
 Ask anything about an account using Gong transcripts and saved research. Answers questions, drafts emails, and saves output for future sessions.
 
-**Run it**: ask naturally — `"what did we discuss with Iron Mountain?"` or `"draft a follow-up for BuildingMinds"`
+**Run it**: ask naturally — `"what did we discuss with Acme Corp?"` or `"draft a follow-up for Beta Inc"`
 
 ```
-account-question "Iron Mountain — what are their pain points?"
-account-question "BuildingMinds — draft a follow-up email"
-account-question "Figure — what did we discuss in the last call?"
+account-question "Acme Corp — what are their pain points?"
+account-question "Beta Inc — draft a follow-up email"
+account-question "Gamma LLC — what did we discuss in the last call?"
 ```
 
 **Requires**: Claude Code + Gong transcript script (see [Setup](#setup-account-question))

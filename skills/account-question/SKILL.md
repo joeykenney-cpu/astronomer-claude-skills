@@ -17,8 +17,8 @@ Answer questions about an account using internal data: Gong call transcripts and
 The user has provided: {{args}}
 
 This could be:
-- An account name with a question: "Iron Mountain - what are their pain points?"
-- Just an account name: "Iron Mountain" (give a general overview)
+- An account name with a question: "Acme Corp - what are their pain points?"
+- Just an account name: "Acme Corp" (give a general overview)
 - A follow-up question about a previously loaded account
 
 ## Steps
@@ -36,19 +36,19 @@ Read whatever exists. This gives you the full history so you don't repeat prior 
 Run the script to pull all calls and transcripts for the account:
 
 ```bash
-python3 -u /Users/joeykenney/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --stdout
+python3 -u ~/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --stdout
 ```
 
 The script automatically checks the global call index cache and does an incremental update if needed.
 
 If unsure of the exact account name, list available accounts:
 ```bash
-python3 /Users/joeykenney/claude-work/gong_account_transcripts.py --list-accounts
+python3 ~/claude-work/gong_account_transcripts.py --list-accounts
 ```
 
 For very large accounts, narrow the time window:
 ```bash
-python3 -u /Users/joeykenney/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --months 3 --stdout
+python3 -u ~/claude-work/gong_account_transcripts.py "ACCOUNT_NAME" --months 3 --stdout
 ```
 
 ### 2. Answer the Question
