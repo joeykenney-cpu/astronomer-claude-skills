@@ -90,7 +90,7 @@ cp prompts/02_account_research.md ~/claude-work/research-assistant/prompts/
 
 Create your account list at `~/claude-work/research-assistant/inputs/accounts.csv`. The file needs two columns — `company_name` and `domain`.
 
-**Getting the list**: Export your accounts from Apollo, Salesforce, or any CRM. If you're working from an Excel or Google Sheets file, save/download it as a CSV before placing it in the inputs folder.
+**Getting the list**: Export a report from Salesforce with at least the Account Name and Website columns, then save it as a CSV. In Salesforce: Reports → New Report → Accounts → add the columns you want → Export → CSV format.
 
 The file should look like this:
 
