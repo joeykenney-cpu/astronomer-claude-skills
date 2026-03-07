@@ -8,7 +8,7 @@ Two-tier cache architecture:
 2. Per-account transcripts: Fetched on-demand for matched calls, cached per account.
 
 Usage:
-    python gong_account_transcripts.py "Acme Corp" --stdout
+    python gong_account_transcripts.py "Third Point" --stdout
     python gong_account_transcripts.py "Pretto" --months 6 --stdout
     python gong_account_transcripts.py "" --list-accounts
     python gong_account_transcripts.py --sync              # Incremental update only
@@ -34,6 +34,7 @@ SECRET_KEY = os.environ.get("GONG_SECRET_KEY", "")
 BASE_URL = "https://api.gong.io/v2"
 OUTPUT_DIR = Path(os.environ.get("GONG_OUTPUT_DIR", os.path.expanduser("~/claude-work")))
 DEFAULT_CACHE_DIR = Path(os.path.expanduser("~/claude-work/gong-cache"))
+DEFAULT_ACCOUNTS_OUTPUT_DIR = Path(os.path.expanduser("~/claude-work/research-assistant/outputs/accounts"))
 RATE_LIMIT_DELAY = 0.35  # ~3 req/sec
 CACHE_VERSION = 3
 ALL_TIME_START = "2015-01-01T00:00:00Z"
@@ -200,7 +201,7 @@ def save_global_index(cache_dir: Path, calls: list, from_date: str, to_date: str
     print(f"  Saved global index: {len(calls)} calls.")
 
 
-GITHUB_REPO = "joeykenney-cpu/astronomer-claude-skills"
+GITHUB_REPO = "joeykenney-cpu/Gong-transcript-search-skill"
 GITHUB_RELEASE_TAG = "v1.0.0"
 
 
@@ -362,9 +363,14 @@ def account_slug(name: str) -> str:
     return name.lower().replace(" ", "_").replace(".", "").replace(",", "").replace("/", "_")
 
 
+def get_account_gong_dir(slug: str) -> Path:
+    """Returns the per-account Gong cache dir inside the account's output folder."""
+    return DEFAULT_ACCOUNTS_OUTPUT_DIR / slug / "gong"
+
+
 def load_account_transcripts(cache_dir: Path, slug: str) -> tuple:
     """Load cached transcripts for an account. Returns (metadata, transcripts) or (None, None)."""
-    acct_dir = cache_dir / "accounts" / slug
+    acct_dir = get_account_gong_dir(slug)
     meta_path = acct_dir / "metadata.json"
     trans_path = acct_dir / "transcripts.json"
 
@@ -384,7 +390,7 @@ def save_account_transcripts(cache_dir: Path, slug: str, account_name: str,
                               call_ids: list, transcripts: list,
                               emails: list = None, email_status: str = ""):
     """Save transcripts (and optionally emails) for an account."""
-    acct_dir = cache_dir / "accounts" / slug
+    acct_dir = get_account_gong_dir(slug)
     acct_dir.mkdir(parents=True, exist_ok=True)
 
     metadata = {
@@ -411,10 +417,27 @@ def save_account_transcripts(cache_dir: Path, slug: str, account_name: str,
           + (f" {len(emails)} emails." if emails else ""))
 
 
+def load_account_call_details(cache_dir: Path, slug: str) -> Optional[dict]:
+    """Load cached call details for an account. Returns {call_id: detail} or None."""
+    details_path = get_account_gong_dir(slug) / "call_details.json"
+    if not details_path.exists():
+        return None
+    with open(details_path) as f:
+        return json.load(f)
+
+
+def save_account_call_details(cache_dir: Path, slug: str, call_details_by_id: dict):
+    """Save call details cache for an account."""
+    acct_dir = get_account_gong_dir(slug)
+    acct_dir.mkdir(parents=True, exist_ok=True)
+    with open(acct_dir / "call_details.json", "w") as f:
+        json.dump(call_details_by_id, f, default=str)
+
+
 def load_account_emails(cache_dir: Path, slug: str) -> tuple:
     """Load cached emails for an account. Returns (emails, status) or (None, None)."""
-    emails_path = cache_dir / "accounts" / slug / "emails.json"
-    meta_path = cache_dir / "accounts" / slug / "metadata.json"
+    emails_path = get_account_gong_dir(slug) / "emails.json"
+    meta_path = get_account_gong_dir(slug) / "metadata.json"
 
     if not emails_path.exists():
         return None, None
@@ -637,18 +660,39 @@ def main():
 
     # --- Fetch full call details for matched calls (parties + CRM context) ---
     call_ids = [c["id"] for c in account_calls if c.get("id")]
-    print(f"Fetching full details for {len(call_ids)} matched calls...")
-    call_details = fetch_call_details(call_ids)
-    call_details_by_id = {
-        d.get("metaData", {}).get("id"): d for d in call_details
-    }
+    slug = account_slug(args.account_name)
+
+    call_details_by_id = {}
+    if not args.no_cache:
+        cached_details = load_account_call_details(cache_dir, slug)
+        if cached_details:
+            call_details_by_id = cached_details
+            new_ids = [cid for cid in call_ids if cid not in call_details_by_id]
+            if new_ids:
+                print(f"  Fetching details for {len(new_ids)} new calls...")
+                new_details = fetch_call_details(new_ids)
+                for d in new_details:
+                    cid = d.get("metaData", {}).get("id")
+                    if cid:
+                        call_details_by_id[cid] = d
+                save_account_call_details(cache_dir, slug, call_details_by_id)
+            else:
+                print(f"  Using cached call details ({len(call_details_by_id)} calls).")
+
+    if not call_details_by_id:
+        print(f"Fetching full details for {len(call_ids)} matched calls...")
+        raw_details = fetch_call_details(call_ids)
+        call_details_by_id = {d.get("metaData", {}).get("id"): d for d in raw_details}
+        if not args.no_cache:
+            save_account_call_details(cache_dir, slug, call_details_by_id)
     print()
+
+    call_details = list(call_details_by_id.values())
 
     # Build speaker map from full details
     speaker_map = build_speaker_map(call_details)
 
     # --- Get transcripts (per-account cache) ---
-    slug = account_slug(args.account_name)
     transcripts = None
 
     if not args.no_cache:

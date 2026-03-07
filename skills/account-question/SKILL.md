@@ -9,7 +9,7 @@ Answer questions about an account using internal data: Gong call transcripts and
 
 ## Architecture
 
-- **Gong transcripts**: Two-tier cache at `~/claude-work/gong-cache/` (global call index + per-account transcripts)
+- **Gong transcripts**: Two-tier cache — global call index at `~/claude-work/gong-cache/all_calls/`, per-account transcripts/call details/emails at `~/claude-work/research-assistant/outputs/accounts/<account_name>/gong/`
 - **Gong emails**: Fetched automatically alongside transcripts. Cached per-account. Gracefully skipped if Gong email integration is not configured in the workspace.
 - **Account files**: `~/claude-work/research-assistant/outputs/accounts/<account_name>/` (report.md, interactions.md)
 

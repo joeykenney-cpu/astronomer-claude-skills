@@ -52,8 +52,8 @@ print(sunday.strftime('%Y-%m-%dT23:59:59Z'))
 ### 2a. Load config
 Read `~/claude-work/rep-coaching/config.md`. Expected format:
 ```
-Email: jake.thomer@astronomer.io
-UserId: 8095169465302401061
+Email: rep.name@astronomer.io
+UserId: <gong_user_id>
 ```
 
 If file does not exist:
@@ -77,7 +77,7 @@ curl -s "https://api.gong.io/v2/users?limit=100" -H "Authorization: Basic $AUTH"
 
 Match priority:
 1. Exact email match (case-insensitive)
-2. If no exact match: infer name from email (`jake.thomer` → "Jake Thomer"), fuzzy-match against user display names
+2. If no exact match: infer name from email (`rep.name` → "Rep Name"), fuzzy-match against user display names
 3. If still no match: tell the user "Could not find [email] in Gong. Please check that this matches your Gong account email." and stop.
 
 **After finding the ID**: Write `UserId: {ID}` to config.md so future runs skip this lookup.
