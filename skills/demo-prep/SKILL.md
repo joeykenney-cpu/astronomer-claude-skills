@@ -52,6 +52,8 @@ Output the brief directly in the conversation using this exact structure:
 **Account:** [one-line description: industry, size, location]
 **Opportunity:** [amount] | [stage] | Close [date]
 
+[2-3 sentence plain-English summary of the overall situation: who they are, where they are in the evaluation, what the key dynamic is going into this call. Write it like a colleague briefing you in the hallway — what do you absolutely need to know before walking in?]
+
 ---
 
 ### Who's on the Call
