@@ -13,6 +13,7 @@ The user has provided: {{args}}
 
 - Single company: `{COMPANY}, {DOMAIN}` (e.g., "Acme Corp, acme.com")
 - Batch mode: `batch: /path/to/file.csv` (CSV with columns: company_name, domain)
+- Batch force-rerun: `batch: /path/to/file.csv force` — re-researches all companies even if a complete report already exists (use after skill updates to refresh all reports)
 
 ## Constants
 - **Leadfeeder Account ID**: `281783`
@@ -611,6 +612,8 @@ print(f'Cached {len(leads)} leads')
 
 ### Batch Step 3: Generate Slugs + Check for Resume
 
+**Detect force flag**: if the input ends with ` force` (e.g., `batch: /path/file.csv force`), set `FORCE_RERUN=true`. In force mode, all companies are treated as `NEEDS_RUN` regardless of existing report state — skip the SKIP check in step (b). Prior changelog entries are still preserved (the report is re-read before overwriting in Step 6).
+
 For each company in the CSV:
 
 **a) Generate slug upfront** — do this before anything else. Rule: lowercase, spaces → underscores, remove all non-alphanumeric characters except underscores. Then check for collision:
@@ -636,7 +639,7 @@ print(slug)
 ```
 Store the result as `COMPANY_SLUG`.
 
-**b) Check for a valid existing report:**
+**b) Check for a valid existing report** (skip entirely if `FORCE_RERUN=true`):
 ```bash
 python3 -c "
 import os, sys
@@ -653,7 +656,7 @@ else:
     print('SKIP')
 " 2>/dev/null || echo "NEEDS_RUN"
 ```
-Skip only companies that return `SKIP`. Incomplete or missing reports always run.
+Skip only companies that return `SKIP`. Incomplete or missing reports always run. In `FORCE_RERUN=true` mode, all companies return `NEEDS_RUN`.
 
 ### Batch Step 4: Process Companies (Groups of 5 Simultaneous Subagents)
 
