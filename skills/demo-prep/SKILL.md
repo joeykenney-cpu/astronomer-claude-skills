@@ -109,7 +109,7 @@ What they want to see, mapped to what you can actually show — with a suggested
 After generating the brief in the conversation, append it to:
 `~/claude-work/research-assistant/outputs/accounts/<snake_case>/interactions.md`
 
-Use a dated header: `## [YYYY-MM-DD] — Demo Prep Brief for SE`
+Use a dated header: `## [YYYY-MM-DD] — Demo Prep Brief for SE (Demo: [date] @ [time])`
 
 Create the file if it doesn't exist.
 
