@@ -56,6 +56,12 @@ Output the brief directly in the conversation using this exact structure:
 
 ---
 
+### Pain Points
+
+Bullet points of what's actually broken or painful in their own words. Use direct quotes where possible — this is the "why we're here" section. The SE should be able to read this and immediately understand what problem they're solving.
+
+---
+
 ### Who's on the Call
 
 | Name | Role | What They Care About |
@@ -92,15 +98,15 @@ Numbered list of the specific pipelines and use cases they want to orchestrate. 
 
 ---
 
-### What [Champion Name] Specifically Asked to See
+### Demo Priorities
 
-Numbered list. Use direct quotes from the transcript where possible. This tells the SE exactly where to focus the demo for the person most likely to sell it internally.
+What the people on this call most want to see — grounded in what they actually asked for. Lead with the champion's specific requests (use direct quotes), then the technical evaluator's day-to-day concerns. This section tells the SE where to spend their time.
 
----
+**[Champion Name] specifically asked to see:**
+1. [Numbered list with direct quotes where possible]
 
-### What [Technical Evaluator Name] Cares About
-
-Bullet points focused on the builder's perspective: ease of getting started, reliability, logging/observability, integrations, day-to-day workflow. Frame around what will make their life easier.
+**What [Technical Evaluator Name] cares about:**
+- [Bullet points on reliability, observability, ease of use, integrations — the builder's perspective]
 
 ---
 
