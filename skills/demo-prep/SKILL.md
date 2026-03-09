@@ -56,12 +56,6 @@ Output the brief directly in the conversation using this exact structure:
 
 ---
 
-### Pain Points
-
-Bullet points of what's actually broken or painful in their own words. Use direct quotes where possible — this is the "why we're here" section. The SE should be able to read this and immediately understand what problem they're solving.
-
----
-
 ### Who's on the Call
 
 | Name | Role | What They Care About |
@@ -72,14 +66,15 @@ Bullet points of what's actually broken or painful in their own words. Use direc
 
 ---
 
-### Current State
+### Pain Points & Business Impact
 
-Bullet points covering:
-- Their existing setup and why it's failing them
-- What they're moving from and to
-- Team size and bandwidth constraints
-- Any hard deadlines (security patches expiring, go-live pressure, etc.)
-- **Business impact** — what is actually at stake if they don't move? Use what they said to assess the real motivation: compliance risk, operational bottlenecks, lost revenue, stalled initiatives, hidden costs, leadership pressure. If they didn't mention impact explicitly, call that out — low stated urgency is useful signal too.
+Bullet points of what's actually broken or painful, in their own words. Use direct quotes where possible. Follow each pain point with the business impact — what's at stake if they don't move: compliance risk, operational bottlenecks, stalled initiatives, hidden costs, leadership pressure. If they didn't mention impact explicitly, call that out — low stated urgency is useful signal too.
+
+---
+
+### Data Products / Business Use Cases
+
+Numbered list of the specific pipelines and use cases they want to orchestrate. Be concrete — use their terminology and the actual systems involved.
 
 ---
 
@@ -93,21 +88,25 @@ Include categories relevant to the demo: orchestration, data warehouse, BI/repor
 
 ---
 
-### Data Products / Business Use Cases
+### Demo Priorities
 
-Numbered list of the specific pipelines and use cases they want to orchestrate. Be concrete — use their terminology and the actual systems involved. These are the things the SE should be able to speak to or ideally demo directly.
+What they want to see, mapped to what you can actually show in the platform. Lead with the champion's specific requests (use direct quotes), then the technical evaluator's concerns. For each item, note the Astro feature or capability that addresses it — this is the SE's cheat sheet for where to spend time.
+
+**[Champion Name] specifically asked to see:**
+1. [What they asked for] → *[Astro feature/capability to show]*
+
+**What [Technical Evaluator Name] cares about:**
+- [Their concern] → *[Astro feature/capability that addresses it]*
 
 ---
 
-### Demo Priorities
+### Current State
 
-What the people on this call most want to see — grounded in what they actually asked for. Lead with the champion's specific requests (use direct quotes), then the technical evaluator's day-to-day concerns. This section tells the SE where to spend their time.
-
-**[Champion Name] specifically asked to see:**
-1. [Numbered list with direct quotes where possible]
-
-**What [Technical Evaluator Name] cares about:**
-- [Bullet points on reliability, observability, ease of use, integrations — the builder's perspective]
+Bullet points covering:
+- Their existing setup and why it's failing them
+- What they're moving from and to
+- Team size and bandwidth constraints
+- Any hard deadlines (security patches expiring, go-live pressure, etc.)
 
 ---
 
