@@ -90,29 +90,13 @@ Include categories relevant to the demo: orchestration, data warehouse, BI/repor
 
 ### Demo Priorities
 
-What they want to see, mapped to what you can actually show — with a suggested run order and time. Lead with the champion's specific requests (use direct quotes), then the technical evaluator's concerns. For each item, note the Astro feature or capability that addresses it. Also fold in:
-- What NOT to show (features they didn't ask for or that would distract)
-- Logistical flags (cloud preference, git provider, compliance requirements, who handles pricing)
-- Competitive context if relevant
+What they want to see, mapped to what you can actually show — with a suggested run order and time. Lead with the champion's specific requests (use direct quotes), then the technical evaluator's concerns. For each item, note the Astro feature or capability that addresses it, and weave in any watch-outs inline (what not to show, logistical flags, who handles pricing, competitive context) so the SE has everything they need in one place.
 
 **[Champion Name] specifically asked to see:**
-1. [What they asked for] → *[Astro feature/capability to show]* (X min)
+1. [What they asked for] → *[Astro feature/capability to show. Any relevant watch-out goes here.]* (X min)
 
 **What [Technical Evaluator Name] cares about:**
 - [Their concern] → *[Astro feature/capability that addresses it]*
-
-**Watch outs:**
-- [What not to demo / objections / logistical notes]
-
----
-
-### Current State
-
-Bullet points covering:
-- Their existing setup and why it's failing them
-- What they're moving from and to
-- Team size and bandwidth constraints
-- Any hard deadlines (security patches expiring, go-live pressure, etc.)
 
 ---
 
