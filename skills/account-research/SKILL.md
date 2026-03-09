@@ -79,6 +79,8 @@ Run these searches (parallel where possible):
 
 1. **Company Research**: `mcp__exa__company_research_exa(companyName=COMPANY_NAME)`
 
+   Extract: employee count + growth rate, revenue/funding stage, industry vertical, business model (is the product itself data-intensive?), any tech stack signals, how they describe themselves around data/AI.
+
 2. **Orchestration/Pipeline Evidence**:
    ```
    mcp__exa__web_search_advanced_exa(
@@ -86,6 +88,8 @@ Run these searches (parallel where possible):
      startPublishedDate=[12 months ago], numResults=5
    )
    ```
+
+   Extract from each result: named orchestration tool (Airflow = existing user; Dagster/Prefect = competitor; Luigi/Argo/Kubeflow/custom = opportunity); data volume/scale (copy exact phrases); pipeline frequency (batch/streaming/real-time); migration stories ("moved from X to Y"); architecture signals (data mesh, lakehouse, microservices). Tag every finding with source URL and date.
 
 3. **Hiring Signals — careers page first (primary source of truth)**:
 
@@ -97,7 +101,16 @@ Run these searches (parallel where possible):
    mcp__exa__crawling_exa(url="https://{DOMAIN}/company/careers", maxCharacters=5000)
    ```
 
-   b) If the careers page lists individual role URLs, crawl the 2-3 most relevant data/platform/engineering postings (maxCharacters=5000 each) to extract tech stack requirements. Skip if no relevant roles listed.
+   b) If the careers page lists individual role URLs, crawl the 2-3 most relevant data/platform/engineering postings (maxCharacters=5000 each). From each posting extract:
+   - **Named tools** — Airflow, Dagster, Prefect, Spark, dbt, Snowflake, Databricks, Kafka, Flink (Airflow = highest signal)
+   - **Scale language** — copy verbatim ("managing hundreds of DAGs", "processing 10M events/day")
+   - **Orchestration explicitly mentioned** — quote the exact phrase if present
+   - **Build vs. maintain framing** — "build our data platform from scratch" = greenfield; "maintain and scale existing pipelines" = rip-and-replace candidate
+   - **Cloud platform** — AWS/GCP/Azure (affects Astro positioning)
+   - **Pain point language** — verbatim: "reliability", "observability", "SLA", "on-call", "data quality"
+   - **Team name** — Data Platform / ML Infrastructure / Data Engineering / etc.
+   - **Seniority** — Staff/Principal = mature org; entry-level = early stage
+   Skip if no data/platform/engineering roles found.
 
    c) If all careers page attempts fail (404 or empty), fall back to a job board search:
    ```
@@ -121,7 +134,11 @@ Run these searches (parallel where possible):
    mcp__exa__web_search_exa(query="{COMPANY_NAME} corporate strategy news 2025 2026", numResults=3)
    ```
 
+   Extract by type: **funding rounds** (stage + amount + stated use of funds — "investing in data infrastructure" is direct signal); **acquisitions** (especially data/AI companies = stack consolidation need); **leadership hires** (new VP Eng or Chief Data Officer = new buying motion); **layoffs/restructuring** (cost-cutting mode = harder sell); **product launches** (new AI/data product = more pipeline complexity); **partnerships** (cloud provider partnerships reveal stack). Tag each with source URL and date.
+
 5. **Website Crawl**: `mcp__exa__crawling_exa(url="https://{DOMAIN}", maxCharacters=5000)`
+
+   Extract: exact language they use to describe themselves around data/scale/automation; customer segments named (enterprise, SMB, regulated industries); any explicit tool or cloud partner mentions; data-intensity signals (copy verbatim: "real-time", "AI-powered", "processes X transactions"); scale claims ("serving 500 enterprise customers"); whether an Engineering or Platform section exists in the nav.
 
 6. **Engineering & Data Blog Posts**:
    ```
@@ -131,6 +148,8 @@ Run these searches (parallel where possible):
    )
    ```
 
+   For each post found, extract: specific tools named (exact names, not categories); scale/volume metrics mentioned; architecture decisions quoted verbatim ("we chose X because Y"); pain points described; post date (recent = more relevant). If no engineering blog exists, record "No public engineering blog found" — this is itself a signal of lower data platform maturity.
+
 7. **Product Announcements**:
    ```
    mcp__exa__web_search_advanced_exa(
@@ -138,6 +157,8 @@ Run these searches (parallel where possible):
      startPublishedDate=[12 months ago], numResults=3
    )
    ```
+
+   Extract: what launched; whether it increases data pipeline complexity (new AI feature, real-time capability, new data product = stronger fit signal). Tag with source URL and date.
 
 8. **Case Studies & Third-Party Mentions**:
    ```
@@ -147,6 +168,8 @@ Run these searches (parallel where possible):
      numResults=5
    )
    ```
+
+   For each case study found, extract: which vendor published it (confirms they are a customer of that tool); every tool/vendor named in the study; use case described (batch ETL / real-time / ML pipelines / etc.); scale numbers if present; exact business problem language (maps directly to Astronomer use cases). Tag with source URL.
 
 9. **Job Description Details** — already handled in search 3b above. No additional step needed.
 
@@ -186,6 +209,13 @@ Keep only: `lead_id`, `name`, `website`, `visit_count`, `last_visited_at`, and p
      sort="latest_activity", direction="desc", limit=10
    )
    ```
+
+   For each contact, assign a value tier based on title:
+   - **HIGH** (decision-makers/champions): VP/Director of Engineering, Head/Director of Data, Data Platform Engineer/Manager, Data Architect, ML Platform, Staff/Principal Data Engineer
+   - **MED** (users, not buyers): Data Engineer, Analytics Engineer, Data Scientist, Data Analyst
+   - **LOW** (not relevant for outreach): Marketing, Sales, Finance, HR, other non-technical roles
+
+   Flag any HIGH-tier contacts visiting Astronomer pages — that's an active buying signal.
 
 3. Recent activity (if org found, use orgId):
    ```
@@ -232,31 +262,76 @@ Try name variations if no match. The script automatically fetches email history 
 ## SOURCE: EXA AI
 
 ### Company Research
-[company_research_exa results]
+**Self-description**: [exact language they use about their product/mission]
+**Employee count**: [N] (growth rate if available)
+**Revenue / Funding stage**: [ARR or round + amount + date]
+**Industry vertical**: [fintech / healthcare / logistics / SaaS / etc.]
+**Business model**: [is the core product data-intensive? yes/no + one-line reason]
+**Tech stack signals**: [any tools mentioned in profile]
+**Data/AI positioning**: [do they call themselves data-driven, AI-powered, etc. — quote]
 
 ### Orchestration & Pipeline Evidence
-[search results]
+For each relevant result:
+- **Orchestration tool named**: [Airflow (existing user) / Dagster/Prefect (competitor) / Luigi/Argo/Kubeflow/custom (opportunity) / none found]
+- **Data volume/scale**: [exact verbatim phrase — e.g. "processing 10M events/day"]
+- **Pipeline frequency**: [batch (daily/hourly) / streaming / real-time / unknown]
+- **Migration story**: [moved from X to Y — quote if found]
+- **Architecture signals**: [data mesh / lakehouse / microservices / monolith]
+- **Source**: [URL — date]
 
 ### Hiring Signals
-[search results]
+**Careers page found**: [Yes — URL crawled / No — fallback used]
+**Open data/platform/engineering roles**: [list role titles]
+**Key tool requirements (verbatim from JDs)**:
+- Orchestration: [Airflow / Dagster / Prefect / none mentioned]
+- Data stack: [dbt / Spark / Snowflake / Databricks / Kafka / Flink / etc.]
+- Cloud: [AWS / GCP / Azure]
+**Scale language (verbatim)**: [exact phrases — e.g. "managing hundreds of DAGs"]
+**Orchestration explicitly mentioned**: [Yes — quote / No]
+**Build vs. maintain framing**: [greenfield / scaling existing / unknown — quote]
+**Pain point language (verbatim)**: [reliability / observability / SLA / on-call / data quality — quote]
+**Team name**: [Data Platform / ML Infrastructure / Data Engineering / etc.]
+**Seniority signal**: [Staff/Principal = mature org / entry-level = early stage]
 
 ### Recent News
-[search results]
+For each relevant item:
+- **Type**: [funding / acquisition / leadership hire / layoff / product launch / partnership]
+- **Summary**: [1-2 sentences]
+- **Signal for Astronomer**: [what this means — e.g. "Series C = budget for tooling", "new CDO = buying motion likely", "layoffs = cost-cutting mode"]
+- **Source + date**: [URL — date]
 
 ### Website Content
-[crawl results]
+**Self-description**: [exact language around data/scale/automation]
+**Customer segments**: [enterprise / SMB / regulated industries / etc.]
+**Tech/partner mentions**: [any tools or cloud logos visible]
+**Data-intensity signals**: [verbatim — "real-time", "AI-powered", "processes X transactions"]
+**Scale claims**: [verbatim — e.g. "serving 500 enterprise customers"]
+**Engineering/Platform section in nav**: [Yes / No]
 
 ### Engineering & Data Blog Posts
-[titles, URLs, key excerpts about data stack and infrastructure]
+For each post found:
+- **Title + URL + date**:
+- **Tools named**: [exact names]
+- **Scale/volume metrics**: [if present]
+- **Architecture decision**: [verbatim — "we chose X because Y"]
+- **Pain points described**: [what problems they were solving]
+- **Signal**: [what this tells us about Airflow fit]
+[If no engineering blog found: "No public engineering blog found — signals lower data platform maturity."]
 
 ### Product Announcements
-[recent product launches or platform changes]
+For each relevant item:
+- **Announcement**: [what launched]
+- **Data/AI relevance**: [does this increase pipeline complexity? yes/no + reason]
+- **Source + date**: [URL — date]
 
 ### Case Studies & Third-Party Mentions
-[vendor case studies featuring this company — often reveal stack details]
-
-### Job Description Details
-[crawled job posting text with requirements and tools. "No relevant job postings crawled." if none.]
+For each case study found:
+- **Published by**: [Snowflake / dbt / AWS / etc. — confirms they are a customer]
+- **Tools/vendors named**: [every tool mentioned]
+- **Use case**: [batch ETL / real-time / ML pipelines / etc.]
+- **Scale numbers**: [if present]
+- **Business problem described**: [verbatim quote — maps to Astronomer use cases]
+- **Source URL**:
 
 ---
 
@@ -266,26 +341,37 @@ Try name variations if no match. The script automatically fetches email history 
 [Found / Not Found]
 
 ### Visit Summary
-[total visits, date range, last_visited_at]
+**Total visits**: [N] | **Date range**: [first–last] | **Last visited**: [date]
 
 ### Page Visits
-[list of URLs with dates — flag any /pricing, /demo, /astro, /docs visits]
+[list of URLs with dates]
+**High-intent flags**: [any /pricing, /demo, /astro, /docs, /trial visits — note date and whether repeated]
 
 ---
 
 ## SOURCE: COMMON ROOM
 
 ### Organization Profile
-[employees, revenue range, industry, lead score, tags. Or "Not found."]
+**Employees**: [N] | **Revenue range**: [min–max] | **Industry**: [industry]
+**Lead score**: [score] | **Tags**: [list]
+**About**: [1-2 sentence summary]
 
 ### Contacts (Top 10 by recent activity)
-[Name | Title | Email | Recent activity summary]
+For each contact:
+- **Name | Title | Email**
+- **Value tier**: [HIGH / MED / LOW — see tier definitions in instructions]
+- **Recent activity**: [what they did + date]
+- **Astronomer site visits**: [Yes — URLs / No]
 
 ### Recent Community Activity (Last 90 Days)
-[activity content, source, date]
+For each activity:
+- **Content**: [what they did]
+- **Source**: [GitHub / Slack / community / etc.]
+- **Signal**: [e.g. "starred apache/airflow repo" = existing Airflow interest]
+- **Date**:
 
 ### Website Visits (Last 90 Days)
-[list of visited URLs]
+[list of visited URLs — flag /pricing, /demo, /docs, /astro]
 
 ---
 
@@ -295,17 +381,23 @@ Try name variations if no match. The script automatically fetches email history 
 [Found / Not Found — if not found: "No prior Gong calls found. Cold outreach."]
 
 ### Call Summary
-[each call: date, participants, 2-3 sentence summary]
+For each call:
+- **Date | Participants (name + title)**
+- **Summary**: [2-3 sentences]
 
 ### Key Intelligence from Calls
-[pain points, objections, decision-makers, deal stage, follow-up items]
+- **Pain points**: [exact quotes where possible]
+- **Objections raised**: [what they pushed back on]
+- **Decision-makers identified**: [name + title]
+- **Deal stage**: [prospecting / discovery / evaluation / negotiation / closed-lost]
+- **Follow-up items**: [what was committed to]
 
 ### Tech Stack from Calls
-[tools mentioned, tagged with call date]
+[tool: mentioned in call dated X]
 
 ### Email History
 [Found / Not Found — if not available: "Email integration not configured in this workspace."]
-[If found: list emails with date, direction (inbound/outbound), subject, and key content excerpt]
+[If found: date | direction (inbound/outbound) | subject | key content excerpt]
 
 ### Full Transcripts
 [full transcript text]
