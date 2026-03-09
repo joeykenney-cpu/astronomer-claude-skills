@@ -52,8 +52,6 @@ Output the brief directly in the conversation using this exact structure:
 **Account:** [one-line description: industry, size, location]
 **Opportunity:** [amount] | [stage] | Close [date]
 
-[2-3 sentence plain-English summary of the overall situation: who they are, where they are in the evaluation, what the key dynamic is going into this call. Write it like a colleague briefing you in the hallway — what do you absolutely need to know before walking in?]
-
 ---
 
 ### Who's on the Call
@@ -63,6 +61,10 @@ Output the brief directly in the conversation using this exact structure:
 | [Name] | [Title] | [1-line summary of their priorities] |
 
 *(Include a note if there are expected attendees whose names you don't know yet, e.g., "Eric will forward the invite to the full IT org — expect a few people you don't know.")*
+
+---
+
+[2-3 sentence plain-English summary of the overall situation: who they are, where they are in the evaluation, what the key dynamic is going into this call. Write it like a colleague briefing you in the hallway — what do you absolutely need to know before walking in?]
 
 ---
 
