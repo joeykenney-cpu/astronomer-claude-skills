@@ -34,11 +34,12 @@ Run before spawning agents:
 ```bash
 python3 -c "
 import json, os, sys
+company = sys.argv[1]
 with open(os.path.expanduser('~/claude-work/gong-cache/all_calls/calls.json')) as f:
     calls = json.load(f)
-matches = [c for c in calls if 'COMPANY_NAME'.lower() in (c.get('crm_account_name') or '').lower()]
+matches = [c for c in calls if company.lower() in (c.get('crm_account_name') or '').lower()]
 print(f'GONG_MATCH: {len(matches)} calls found')
-" 2>/dev/null || echo "GONG_MATCH: index unavailable"
+" "{COMPANY_NAME}" 2>/dev/null || echo "GONG_MATCH: index unavailable"
 ```
 If `0 calls found`, set `GONG_HAS_CALLS=false` — skip Gong in Agent 2 and record "No prior Gong calls found. Cold outreach." If index unavailable, run Gong as normal.
 
@@ -178,9 +179,11 @@ Keep only: `lead_id`, `name`, `website`, `visit_count`, `last_visited_at`, and p
 
 **Gong** (only if `GONG_HAS_CALLS=true` or index was unavailable):
 ```bash
-python3 -u ~/claude-work/gong_account_transcripts.py "COMPANY_NAME" --stdout
+python3 -u ~/claude-work/gong_account_transcripts.py "{COMPANY_NAME}" --stdout
 ```
 Try name variations if no match. The script automatically fetches email history alongside transcripts (gracefully skipped if Gong email integration is not configured). Extract from both calls and emails: call dates, participants, topics, pain points, tech stack mentions, deal stage, follow-up items, and any email thread context (subject lines, email direction, key content).
+
+**Gong transcript size cap**: If the returned transcripts total more than 30,000 words, keep only the 5 most recent calls and truncate each transcript body to 3,000 words. Preserve all metadata (date, participants, summary). Note the truncation in the RAW INTELLIGENCE block: "Transcripts truncated: kept 5 most recent of N total calls."
 
 ### Step 4: Assemble RAW INTELLIGENCE Block
 
@@ -341,12 +344,19 @@ Skip entirely if no `APOLLO_API_KEY` (from pre-flight). Log "Apollo sync skipped
    ```
    Find the result where `account.domain == "{DOMAIN}"`. If none match, skip and log: "Apollo: No account found matching domain {DOMAIN}."
 
-2. Write report:
+2. Write report and verify success:
    ```bash
    REPORT=$(cat ~/claude-work/research-assistant/outputs/accounts/{COMPANY_SLUG}/report.md)
-   curl -s -X PUT "https://api.apollo.io/v1/accounts/{ACCOUNT_ID}" \
+   RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X PUT "https://api.apollo.io/v1/accounts/{ACCOUNT_ID}" \
      -H "Content-Type: application/json" \
-     -d "{\"api_key\": \"$APOLLO_API_KEY\", \"typed_custom_fields\": {\"6998b33edacda9000deb48ca\": $(echo "$REPORT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')}}"
+     -d "{\"api_key\": \"$APOLLO_API_KEY\", \"typed_custom_fields\": {\"6998b33edacda9000deb48ca\": $(echo "$REPORT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' )}}")
+   HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+   if [ "$HTTP_STATUS" = "200" ]; then
+     echo "Apollo: write succeeded"
+   else
+     echo "Apollo: write FAILED — HTTP $HTTP_STATUS"
+     echo "$RESPONSE"
+   fi
    ```
 
 ### Step 9: Present Results
@@ -368,42 +378,68 @@ mcp__leadfeeder__get_leads(account_id="281783", start_date=[6mo ago], end_date=[
 ```
 Stop when a page returns <100 results. Store only: `id`, `name`, `website`, `visit_count`, `last_visited_at`.
 
-### Batch Step 3: Check for Resume
+### Batch Step 3: Generate Slugs + Check for Resume
 
-For each company, check whether a valid report already exists:
+For each company in the CSV:
+
+**a) Generate slug upfront** — do this before anything else. Rule: lowercase, spaces → underscores, remove all non-alphanumeric characters except underscores. Store as `COMPANY_SLUG` for use in Steps 3b, 4, and Apollo sync.
+
+**b) Check for a valid existing report:**
 ```bash
 python3 -c "
-import os
+import os, sys
 path = os.path.expanduser('~/claude-work/research-assistant/outputs/accounts/{COMPANY_SLUG}/report.md')
 if not os.path.exists(path):
     print('NEEDS_RUN')
+    sys.exit(0)
+content = open(path).read()
+required = ['# Account Research Report:', '**Generated**:', '**Sources**:']
+missing = [s for s in required if s not in content]
+if missing or len(content) < 2000:
+    print('NEEDS_RUN')  # file exists but is incomplete — rerun
 else:
-    content = open(path).read()
-    if 'Fit Score' in content and 'AE Brief' in content and len(content) >= 1000:
-        print('SKIP')
-    else:
-        print('NEEDS_RUN')  # file exists but is incomplete — rerun it
-"
+    print('SKIP')
+" 2>/dev/null || echo "NEEDS_RUN"
 ```
-Skip only companies that return `SKIP`. Companies with missing or incomplete reports always run, even if they appear in `batch_summary.csv`.
+Skip only companies that return `SKIP`. Incomplete or missing reports always run.
 
 ### Batch Step 4: Process Companies (One Isolated Agent Per Company)
 
 For each unprocessed company, run this sequence:
 
-**a) Spawn a subagent:**
+**a) Pre-match Leadfeeder from the pre-fetched list:**
+Search the pre-fetched leads for a record where `name` or `website` matches `{COMPANY_NAME}` or `{DOMAIN}`. Store as `LEADFEEDER_MATCH`:
+- If found: `{ lead_id, name, website, visit_count, last_visited_at }`
+- If not found: `"no match"`
+
+**b) Spawn a subagent with fully self-contained instructions:**
+
+The subagent has no access to this skill file. The task string must embed everything it needs. Construct the task as follows — substitute all `{variables}` before passing:
+
 ```
 Agent(
   subagent_type="general-purpose",
-  task="Complete the full account research flow (Steps 2–9 of the account-research skill) for {COMPANY_NAME}, {DOMAIN}. Use the pre-fetched Leadfeeder data provided below to skip the Leadfeeder pagination — match directly by name or domain. Save the report to ~/claude-work/research-assistant/outputs/accounts/{COMPANY_SLUG}/report.md. When done, respond with only: '{COMPANY_NAME} complete' or '{COMPANY_NAME} error: [one-line reason]'.",
-  context="Leadfeeder pre-fetched data: {LEADFEEDER_SUBSET_FOR_THIS_COMPANY}"
+  task="""
+You are researching {COMPANY_NAME} ({DOMAIN}) for Astronomer sales fitness.
+Save the final report to: ~/claude-work/research-assistant/outputs/accounts/{COMPANY_SLUG}/report.md
+When finished, respond with only: "{COMPANY_NAME} complete" or "{COMPANY_NAME} error: [one-line reason]"
+Do NOT return the report content in your response.
+
+=== LEADFEEDER DATA (pre-fetched) ===
+{LEADFEEDER_MATCH}
+If a lead_id is provided above, call mcp__leadfeeder__get_lead_visits(account_id="281783", lead_id=<id>, start_date=<6mo ago>, end_date=<today>) to get page visit URLs.
+If "no match", record "Not found" in the Leadfeeder section.
+
+=== RESEARCH INSTRUCTIONS ===
+[Embed the full text of SINGLE COMPANY MODE Steps 2–7 here, with {COMPANY_NAME}, {DOMAIN}, and {COMPANY_SLUG} substituted. Skip Step 2b Apollo key check — Apollo sync is handled separately after you complete. Skip Step 8 (Apollo) and Step 9 (display) entirely.]
+"""
 )
 ```
 
-The subagent handles everything — Exa, Gong, Common Room, report generation, Apollo sync. Do NOT receive the full report back. Accept only the one-line status response.
+**Important**: Do not reference "the skill" or "Steps X-Y" in the task string. The subagent is isolated and will not find them. Embed the actual instructions inline.
 
-**b) Verify the report:**
-After the subagent responds, check:
+**c) Verify the report:**
+After the subagent responds (regardless of what it says), run:
 ```bash
 python3 -c "
 import os, sys
@@ -412,28 +448,35 @@ if not os.path.exists(path):
     print('FAIL: file missing')
     sys.exit(1)
 content = open(path).read()
-required = ['Fit Score', 'AE Brief']
+required = ['# Account Research Report:', '**Generated**:', '**Sources**:']
 missing = [s for s in required if s not in content]
 if missing:
     print(f'FAIL: missing sections {missing}')
     sys.exit(1)
-if len(content) < 1000:
-    print('FAIL: report too short')
+if len(content) < 2000:
+    print(f'FAIL: report too short ({len(content)} chars)')
     sys.exit(1)
 print('OK')
-"
+" 2>&1
 ```
 
-**c) Retry once if verification fails:**
-If the check returns anything other than `OK`, spawn the agent one more time with the same prompt. Re-run verification after. If it fails again, mark this company as `FAILED` and move on — do not block the batch.
+**d) Retry once if verification fails:**
+If result is not `OK`, spawn the same agent one more time. Re-verify after. If it fails again, mark as `FAILED` with the verification error reason and move on — do not block the batch.
 
-**d) Log the result:**
-After each company (success or failure), append to `~/claude-work/research-assistant/outputs/batch_run_log.txt`:
+**e) Apollo sync (orchestrator runs this, not the subagent):**
+Only run if verification returned `OK` and `$APOLLO_API_KEY` is set. Use the Apollo instructions from Step 8 of SINGLE COMPANY MODE with `{COMPANY_NAME}`, `{DOMAIN}`, and `{COMPANY_SLUG}` substituted. Check the HTTP response — log `Apollo: write succeeded` or `Apollo: write FAILED — HTTP {status}`.
+
+**f) Log the result:**
+Append to `~/claude-work/research-assistant/outputs/batch_run_log.txt`:
 ```
-{TIMESTAMP} | {COMPANY_NAME} | {DOMAIN} | SUCCESS  (or FAILED: [reason])
+{TIMESTAMP} | {COMPANY_NAME} | {DOMAIN} | SUCCESS | Apollo: succeeded/failed/skipped
+```
+or on failure:
+```
+{TIMESTAMP} | {COMPANY_NAME} | {DOMAIN} | FAILED: [verification error]
 ```
 
-**e) Update batch summary CSV**, then pause 2 seconds before the next company.
+**g) Update batch summary CSV**, then pause 2 seconds before the next company.
 
 ### Batch Step 5: Chunking
 If CSV has >50 companies: process in chunks of 50, pause 10 seconds between chunks.
