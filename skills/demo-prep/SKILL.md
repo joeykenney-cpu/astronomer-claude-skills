@@ -79,6 +79,7 @@ Bullet points covering:
 - What they're moving from and to
 - Team size and bandwidth constraints
 - Any hard deadlines (security patches expiring, go-live pressure, etc.)
+- **Business impact** — what is actually at stake if they don't move? Use what they said to assess the real motivation: compliance risk, operational bottlenecks, lost revenue, stalled initiatives, hidden costs, leadership pressure. If they didn't mention impact explicitly, call that out — low stated urgency is useful signal too.
 
 ---
 
