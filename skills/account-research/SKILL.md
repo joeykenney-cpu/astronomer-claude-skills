@@ -102,13 +102,22 @@ Use Claude's built-in **WebSearch** and **WebFetch** tools for all queries. If `
 
    Extract from each result: named orchestration tool (Airflow = existing user; Dagster/Prefect = competitor; Luigi/Argo/Kubeflow/custom = opportunity); data volume/scale (copy exact phrases); pipeline frequency (batch/streaming/real-time); migration stories ("moved from X to Y"); architecture signals (data mesh, lakehouse, microservices). Tag every finding with source URL and date.
 
-3a. **Hiring Signals — job posting discovery**:
+3a. **Hiring Signals — job posting discovery** — two parallel searches, both in Batch A:
+
+   **Title search** — broad role coverage:
    ```
-   WebSearch('"{COMPANY_NAME}" site:greenhouse.io OR site:lever.co OR site:ashbyhq.com (data engineer OR "data platform" OR "platform engineer")')
+   WebSearch('"{COMPANY_NAME}" site:greenhouse.io OR site:lever.co OR site:ashbyhq.com ("data engineer" OR "data platform" OR "platform engineer" OR "ML engineer" OR "MLOps" OR "analytics engineer" OR "data architect" OR "data infrastructure" OR "data operations" OR "data reliability")')
    ```
-   If this returns fewer than 2 results, also include in Batch A:
+
+   **Tool search** — orchestration mentions regardless of job title:
    ```
-   WebSearch('site:{DOMAIN} (data engineer OR "data platform" OR "platform engineer" OR "data infrastructure")')
+   WebSearch('"{COMPANY_NAME}" site:greenhouse.io OR site:lever.co OR site:ashbyhq.com ("Apache Airflow" OR "Airflow DAG" OR dagster OR prefect OR "data orchestration" OR "workflow orchestration")')
+   ```
+   This catches Airflow requirements embedded in ML Engineer, DevOps, Backend, or Staff Engineer roles that a title-only search would miss.
+
+   If both return fewer than 2 combined results, also include in Batch A:
+   ```
+   WebSearch('site:{DOMAIN} ("data engineer" OR "data platform" OR "platform engineer" OR "ML engineer" OR "MLOps" OR "analytics engineer" OR "data architect" OR "data infrastructure")')
    ```
 
 4. **Recent News**:
@@ -158,19 +167,22 @@ Use Claude's built-in **WebSearch** and **WebFetch** tools for all queries. If `
 
 **Batch B — fire after Batch A completes (depends on 3a and 6 results):**
 
-3b. **Job Posting Crawls**: From the URLs returned by search 3a, WebFetch the 2-3 most relevant data/platform/engineering postings (maxCharacters=5000 each). From each posting extract:
-   - **Named tools** — Airflow, Dagster, Prefect, Spark, dbt, Snowflake, Databricks, Kafka, Flink (Airflow = highest signal)
+3b. **Job Posting Crawls**: From the URLs returned by search 3a, WebFetch up to 4 postings (maxCharacters=5000 each). Prioritize: (1) any role from the tool search that mentions Airflow/Dagster/Prefect directly, (2) data platform / ML platform / MLOps roles, (3) data engineer / analytics engineer / data architect roles. Do not limit to "data engineer" and "platform engineer" titles — any role mentioning orchestration tools is worth crawling regardless of title.
+
+   From each posting extract:
+   - **Named tools** — Airflow, Dagster, Prefect, Spark, dbt, Snowflake, Databricks, Kafka, Flink, MLflow, Kubeflow (Airflow = highest signal)
    - **Scale language** — copy verbatim ("managing hundreds of DAGs", "processing 10M events/day")
    - **Orchestration explicitly mentioned** — quote the exact phrase if present
    - **Build vs. maintain framing** — "build our data platform from scratch" = greenfield; "maintain and scale existing pipelines" = rip-and-replace candidate
    - **Cloud platform** — AWS/GCP/Azure (affects Astro positioning)
    - **Pain point language** — verbatim: "reliability", "observability", "SLA", "on-call", "data quality"
-   - **Team name** — Data Platform / ML Infrastructure / Data Engineering / etc.
-   - **Seniority** — Staff/Principal = mature org; entry-level = early stage
+   - **Team name** — Data Platform / ML Infrastructure / Data Engineering / MLOps / etc.
+   - **Seniority** — Staff/Principal/Director = mature org; entry-level = early stage
+   - **Role type** — note if this is a non-traditional role (e.g. ML Engineer, DevOps) that reveals orchestration need
 
-   Skip if 3a returned no relevant posting URLs. If 3a returned no results at all, run this fallback search instead:
+   If 3a returned no relevant posting URLs, run this fallback search instead:
    ```
-   WebSearch('"{COMPANY_NAME}" hiring "data engineer" OR "platform engineer" after:2025-09-09')
+   WebSearch('"{COMPANY_NAME}" hiring ("data engineer" OR "ML engineer" OR "MLOps" OR "analytics engineer" OR "data architect" OR "platform engineer" OR "data operations") after:2025-09-09')
    ```
 
 6b. **Engineering Blog Fetches**: WebFetch the top 1-2 blog post URLs identified in search 6 (maxCharacters=5000 each).
@@ -284,18 +296,19 @@ For each relevant result:
 - **Source**: [URL — date]
 
 ### Hiring Signals
-**Careers page found**: [Yes — URL crawled / No — fallback used]
-**Open data/platform/engineering roles**: [list role titles]
+**Job board search method**: [title search / tool search / domain search / fallback]
+**Open roles (all data/ML/platform/infra titles)**: [list all role titles found — include ML Eng, MLOps, Analytics Eng, Data Architect, etc.]
+**Roles mentioning orchestration tools**: [list any role — regardless of title — that names Airflow/Dagster/Prefect/etc.]
 **Key tool requirements (verbatim from JDs)**:
-- Orchestration: [Airflow / Dagster / Prefect / none mentioned]
-- Data stack: [dbt / Spark / Snowflake / Databricks / Kafka / Flink / etc.]
+- Orchestration: [Airflow / Dagster / Prefect / none mentioned — quote exact phrase if present]
+- Data stack: [dbt / Spark / Snowflake / Databricks / Kafka / Flink / MLflow / etc.]
 - Cloud: [AWS / GCP / Azure]
 **Scale language (verbatim)**: [exact phrases — e.g. "managing hundreds of DAGs"]
 **Orchestration explicitly mentioned**: [Yes — quote / No]
 **Build vs. maintain framing**: [greenfield / scaling existing / unknown — quote]
 **Pain point language (verbatim)**: [reliability / observability / SLA / on-call / data quality — quote]
-**Team name**: [Data Platform / ML Infrastructure / Data Engineering / etc.]
-**Seniority signal**: [Staff/Principal = mature org / entry-level = early stage]
+**Team name**: [Data Platform / ML Infrastructure / Data Engineering / MLOps / etc.]
+**Seniority signal**: [Staff/Principal/Director = mature org / entry-level = early stage]
 
 ### Recent News
 For each relevant item:
